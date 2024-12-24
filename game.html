@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - For Mom and Dad!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(to bottom, #87cefa, #70c5ce);
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            color: white;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #d0e8f2;
+        }
+        h1 {
+            font-size: 40px;
+            margin-top: 20px;
+        }
+        #score {
+            font-size: 30px;
+            margin-top: 10px;
+        }
+        #gameOverText {
+            font-size: 40px;
+            color: white;
+            font-weight: bold;
+            display: none;
+        }
+        #restartText {
+            font-size: 20px;
+            display: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Flappy Bird - For Mom and Dad!</h1>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="score">Score: 0</div>
+<div id="gameOverText">Game Over!</div>
+<div id="restartText">Click to Restart</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Game constants
+    const GRAVITY = 0.3;  // Lower gravity to make the bird fall slower
+    const FLAP_STRENGTH = -6;  // Lower flap strength to make the bird jump less high
+    const PIPE_WIDTH = 60;
+    const PIPE_SPACING = 200;
+    const PIPE_HEIGHT_MIN = 120;
+    const PIPE_HEIGHT_MAX = 400;
+    const SPAWN_RATE = 90;
+
+    let bird = {
+        x: 50,
+        y: canvas.height / 2,
+        width: 40,
+        height: 40,
+        velocityY: 0,
+        flap() {
+            this.velocityY = FLAP_STRENGTH;
+        }
+    };
+
+    let pipes = [];
+    let score = 0;
+    let gameOver = false;
+    let frameCount = 0;
+
+    // Draw the bird (using a rectangle instead of an image)
+    function drawBird() {
+        ctx.fillStyle = "#FFD700"; // Golden bird
+        ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+    }
+
+    // Draw the pipes (using rectangles for simplicity)
+    function drawPipes() {
+        pipes.forEach(pipe => {
+            ctx.fillStyle = "#228B22"; // Green pipes
+            ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.topHeight);  // Top pipe
+            ctx.fillRect(pipe.x, pipe.bottomY, PIPE_WIDTH, canvas.height - pipe.bottomY);  // Bottom pipe
+        });
+    }
+
+    // Update the bird's position
+    function updateBird() {
+        bird.velocityY += GRAVITY;
+        bird.y += bird.velocityY;
+
+        if (bird.y + bird.height > canvas.height) {
+            bird.y = canvas.height - bird.height;
+            if (!gameOver) gameOverScreen();
+        }
+
+        if (bird.y < 0) bird.y = 0;
+    }
+
+    // Generate pipes
+    function generatePipes() {
+        if (frameCount % SPAWN_RATE === 0) {
+            let topHeight = Math.floor(Math.random() * (PIPE_HEIGHT_MAX - PIPE_HEIGHT_MIN)) + PIPE_HEIGHT_MIN;
+            let bottomY = topHeight + PIPE_SPACING;
+            pipes.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomY: bottomY
+            });
+        }
+    }
+
+    // Update the pipes' position
+    function updatePipes() {
+        pipes.forEach(pipe => {
+            pipe.x -= 2;  // Slow down the pipes
+        });
+
+        pipes = pipes.filter(pipe => pipe.x + PIPE_WIDTH > 0);
+    }
+
+    // Check for collision between bird and pipes
+    function checkCollisions() {
+        pipes.forEach(pipe => {
+            if (bird.x + bird.width > pipe.x && bird.x < pipe.x + PIPE_WIDTH) {
+                if (bird.y < pipe.topHeight || bird.y + bird.height > pipe.bottomY) {
+                    gameOverScreen();
+                }
+            }
+        });
+    }
+
+    // Increase score
+    function increaseScore() {
+        pipes.forEach(pipe => {
+            if (pipe.x + PIPE_WIDTH < bird.x && !pipe.scored) {
+                pipe.scored = true;
+                score++;
+                document.getElementById("score").innerText = "Score: " + score;
+            }
+        });
+    }
+
+    // Show game over screen
+    function gameOverScreen() {
+        gameOver = true;
+        document.getElementById("gameOverText").style.display = "block";
+        document.getElementById("restartText").style.display = "block";
+    }
+
+    // Restart the game
+    function restartGame() {
+        if (gameOver) {
+            bird.y = canvas.height / 2;
+            bird.velocityY = 0;
+            pipes = [];
+            score = 0;
+            gameOver = false;
+            document.getElementById("score").innerText = "Score: " + score;
+            document.getElementById("gameOverText").style.display = "none";
+            document.getElementById("restartText").style.display = "none";
+            frameCount = 0;
+            requestAnimationFrame(update);
+        }
+    }
+
+    // Main update function
+    function update() {
+        if (gameOver) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update game elements
+        generatePipes();
+        updateBird();
+        updatePipes();
+        checkCollisions();
+        increaseScore();
+
+        // Draw elements
+        drawBird();
+        drawPipes();
+
+        frameCount++;
+
+        requestAnimationFrame(update);
+    }
+
+    // Event listeners for bird movement
+    window.addEventListener("keydown", function (e) {
+        if (e.key === " " || e.key === "ArrowUp") {
+            bird.flap();
+        }
+    });
+
+    window.addEventListener("click", function () {
+        if (gameOver) {
+            restartGame();
+        } else {
+            bird.flap();
+        }
+    });
+
+    // Start the game
+    update();
+</script>
+
+</body>
+</html>
