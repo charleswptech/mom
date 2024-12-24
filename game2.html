@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brawl Stars - Mini Battle</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #2c3e50;
+      margin: 0;
+    }
+
+    .game-container {
+      text-align: center;
+      width: 600px;
+    }
+
+    canvas {
+      background-color: #ecf0f1;
+      border: 3px solid #34495e;
+      display: block;
+      margin: 0 auto;
+    }
+
+    #scoreboard {
+      margin-top: 15px;
+      font-size: 20px;
+      color: #fff;
+    }
+
+    #scoreboard div {
+      margin: 5px 0;
+    }
+
+    h1 {
+      color: #ecf0f1;
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    .player1 {
+      color: #3498db;
+    }
+
+    .player2 {
+      color: #e74c3c;
+    }
+
+    .button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #2980b9;
+    }
+
+    .character-choice {
+      margin-top: 20px;
+    }
+
+    .character {
+      background-color: #3498db;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .character:hover {
+      background-color: #2980b9;
+    }
+
+    .health-bar {
+      width: 100%;
+      background-color: #ddd;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      height: 15px;
+      margin-top: 10px;
+    }
+
+    .health-fill {
+      height: 100%;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>Brawl Stars - Mini Battle</h1>
+    <div id="scoreboard">
+      <div class="player1">Player 1: <span id="score1">0</span></div>
+      <div class="player2">Player 2: <span id="score2">0</span></div>
+      <div class="player1">Player 1 Health: <span id="health1">100</span></div>
+      <div class="player2">Player 2 Health: <span id="health2">100</span></div>
+    </div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div id="characterSelection" class="character-choice">
+      <h2>Player 1 - Choose Your Character</h2>
+      <button class="character" onclick="selectCharacter(1, 1)">Character 1 (Health: 100, Range: 6)</button>
+      <button class="character" onclick="selectCharacter(1, 2)">Character 2 (Health: 150, Range: 5)</button>
+      <button class="character" onclick="selectCharacter(1, 3)">Character 3 (Health: 200, Range: 4)</button>
+      
+      <h2>Player 2 - Choose Your Character</h2>
+      <button class="character" onclick="selectCharacter(2, 1)">Character 1 (Health: 100, Range: 6)</button>
+      <button class="character" onclick="selectCharacter(2, 2)">Character 2 (Health: 150, Range: 5)</button>
+      <button class="character" onclick="selectCharacter(2, 3)">Character 3 (Health: 200, Range: 4)</button>
+    </div>
+    <button class="button" id="startButton" style="display: none;" onclick="startGame()">Start Game</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const score1El = document.getElementById("score1");
+    const score2El = document.getElementById("score2");
+    const health1El = document.getElementById("health1");
+    const health2El = document.getElementById("health2");
+    const startButton = document.getElementById("startButton");
+    const characterSelection = document.getElementById("characterSelection");
+
+    let player1 = { x: 50, y: 200, width: 40, height: 40, color: "#3498db", health: 100, range: 6, speed: 5, score: 0 };
+    let player2 = { x: 520, y: 200, width: 40, height: 40, color: "#e74c3c", health: 100, range: 6, speed: 5, score: 0 };
+    let bullets = [];
+    let explosionEffects = [];
+    let keys = {};
+    let gameStarted = false;
+    let player1Selected = false;
+    let player2Selected = false;
+
+    function selectCharacter(playerNumber, character) {
+      if (playerNumber === 1 && !player1Selected) {
+        const characters = [
+          { health: 100, range: 6 },
+          { health: 150, range: 5 },
+          { health: 200, range: 4 }
+        ];
+
+        player1.health = characters[character - 1].health;
+        player1.range = characters[character - 1].range;
+        health1El.textContent = player1.health;
+        player1Selected = true;
+
+        // Hide Player 1's character selection and show Player 2's
+        document.querySelectorAll('.character').forEach(button => {
+          button.disabled = true;
+        });
+
+        document.querySelectorAll('.character')[3].disabled = false;
+        document.querySelectorAll('.character')[4].disabled = false;
+        document.querySelectorAll('.character')[5].disabled = false;
+      } else if (playerNumber === 2 && !player2Selected) {
+        const characters = [
+          { health: 100, range: 6 },
+          { health: 150, range: 5 },
+          { health: 200, range: 4 }
+        ];
+
+        player2.health = characters[character - 1].health;
+        player2.range = characters[character - 1].range;
+        health2El.textContent = player2.health;
+        player2Selected = true;
+      }
+
+      if (player1Selected && player2Selected) {
+        startButton.style.display = "inline-block";
+      }
+    }
+
+    function startGame() {
+      gameStarted = true;
+      player1.x = 50;
+      player1.y = 200;
+      player2.x = 520;
+      player2.y = 200;
+      player1.score = 0;
+      player2.score = 0;
+      score1El.textContent = player1.score;
+      score2El.textContent = player2.score;
+      bullets = [];
+      explosionEffects = [];
+      keys = {};
+      gameLoop();
+      startButton.style.display = "none";
+    }
+
+    function drawGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw players
+      ctx.fillStyle = player1.color;
+      ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
+
+      ctx.fillStyle = player2.color;
+      ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+      // Draw health bars
+      drawHealthBar(player1, "#3498db");
+      drawHealthBar(player2, "#e74c3c");
+
+      // Draw bullets
+      bullets.forEach((bullet, index) => {
+        ctx.fillStyle = bullet.color;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+
+        // Bullet trail effect: Fade the bullet as it moves
+        ctx.globalAlpha = 1 - bullet.life * 0.1;
+        bullet.x += bullet.speedX;
+        bullet.y += bullet.speedY;
+        bullet.life++;
+
+        if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height || bullet.life > 30) {
+          bullets.splice(index, 1); // Remove bullet if out of bounds or max life
+        }
+
+        // Check for collision and apply damage
+        if (bullet.owner !== 1 && checkCollision(bullet, player1)) {
+          player1.health -= 10;
+          health1El.textContent = player1.health;
+          createExplosion(bullet.x, bullet.y, "#3498db");
+          bullets.splice(index, 1);
+        }
+        if (bullet.owner !== 2 && checkCollision(bullet, player2)) {
+          player2.health -= 10;
+          health2El.textContent = player2.health;
+          createExplosion(bullet.x, bullet.y, "#e74c3c");
+          bullets.splice(index, 1);
+        }
+
+        ctx.globalAlpha = 1; // Reset alpha for other elements
+      });
+
+      // Draw explosion effects
+      explosionEffects.forEach((effect, index) => {
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, effect.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = effect.color;
+        ctx.fill();
+        effect.radius += effect.speed;
+        effect.alpha -= 0.05;
+
+        if (effect.alpha <= 0) {
+          explosionEffects.splice(index, 1); // Remove effect when it's fully faded
+        }
+      });
+
+      score1El.textContent = player1.score;
+      score2El.textContent = player2.score;
+
+      // End game if health reaches 0
+      if (player1.health <= 0) {
+        alert("Player 2 wins!");
+        resetGame();
+      }
+      if (player2.health <= 0) {
+        alert("Player 1 wins!");
+        resetGame();
+      }
+    }
+
+    function drawHealthBar(player, color) {
+      const healthBarWidth = 100;
+      const healthFillWidth = (player.health / 100) * healthBarWidth;
+      ctx.fillStyle = "#ddd";
+      ctx.fillRect(player.x, player.y - 20, healthBarWidth, 15);
+      ctx.fillStyle = color;
+      ctx.fillRect(player.x, player.y - 20, healthFillWidth, 15);
+    }
+
+    function checkCollision(bullet, player) {
+      return bullet.x < player.x + player.width &&
+             bullet.x + bullet.width > player.x &&
+             bullet.y < player.y + player.height &&
+             bullet.y + bullet.height > player.y;
+    }
+
+    function handleMovement() {
+      if (keys["w"] && player1.y > 0) player1.y -= player1.speed;
+      if (keys["s"] && player1.y < canvas.height - player1.height) player1.y += player1.speed;
+      if (keys["a"] && player1.x > 0) player1.x -= player1.speed;
+      if (keys["d"] && player1.x < canvas.width - player1.width) player1.x += player1.speed;
+
+      if (keys["ArrowUp"] && player2.y > 0) player2.y -= player2.speed;
+      if (keys["ArrowDown"] && player2.y < canvas.height - player2.height) player2.y += player2.speed;
+      if (keys["ArrowLeft"] && player2.x > 0) player2.x -= player2.speed;
+      if (keys["ArrowRight"] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
+
+      if (keys[" "] && bullets.length < 1) {
+        shootBullet(player1.x + player1.width / 2, player1.y + player1.height / 2, player1.range, 0, player1.color, 1);
+      }
+
+      if (keys["Enter"] && bullets.length < 1) {
+        shootBullet(player2.x + player2.width / 2, player2.y + player2.height / 2, -player2.range, 0, player2.color, 2);
+      }
+    }
+
+    function shootBullet(x, y, speedX, speedY, color, owner) {
+      bullets.push({
+        x: x,
+        y: y,
+        width: 10,
+        height: 5,
+        speedX: speedX,
+        speedY: speedY,
+        color: color,
+        life: 0,
+        owner: owner // Indicate which player owns the bullet
+      });
+    }
+
+    function createExplosion(x, y, color) {
+      explosionEffects.push({
+        x: x,
+        y: y,
+        radius: 5,
+        color: color,
+        alpha: 1,
+        speed: 1
+      });
+    }
+
+    function resetGame() {
+      player1.x = 50;
+      player1.y = 200;
+      player2.x = 520;
+      player2.y = 200;
+      bullets = [];
+    }
+
+    function gameLoop() {
+      if (!gameStarted) return;
+      handleMovement();
+      drawGame();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+  </script>
+</body>
+</html>
