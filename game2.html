@@ -138,14 +138,45 @@
     const startButton = document.getElementById("startButton");
     const characterSelection = document.getElementById("characterSelection");
 
-    let player1 = { x: 50, y: 200, width: 40, height: 40, color: "#3498db", health: 100, range: 6, speed: 5, score: 0 };
-    let player2 = { x: 520, y: 200, width: 40, height: 40, color: "#e74c3c", health: 100, range: 6, speed: 5, score: 0 };
+    let player1 = { x: 50, y: 200, width: 40, height: 40, color: "#3498db", health: 100, range: 6, speed: 5, score: 0, aiming: { x: 0, y: 0 }, aimingAngle: 0 };
+    let player2 = { x: 520, y: 200, width: 40, height: 40, color: "#e74c3c", health: 100, range: 6, speed: 5, score: 0, aiming: { x: 0, y: 0 }, aimingAngle: 0 };
     let bullets = [];
     let explosionEffects = [];
     let keys = {};
     let gameStarted = false;
     let player1Selected = false;
     let player2Selected = false;
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+
+      if (gameStarted) {
+        player1.aiming.x = mouseX;
+        player1.aiming.y = mouseY;
+      }
+    });
+
+    window.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+
+      // Shoot actions
+      if (e.key === " " && gameStarted) { // Red player shoots with spacebar
+        shoot(player1);
+      }
+
+      if (e.key === "Enter" && gameStarted) { // Blue player shoots with Enter
+        shoot(player2);
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
 
     function selectCharacter(playerNumber, character) {
       if (playerNumber === 1 && !player1Selected) {
@@ -203,6 +234,13 @@
       startButton.style.display = "none";
     }
 
+    function gameLoop() {
+      if (!gameStarted) return;
+      handleMovement();
+      drawGame();
+      requestAnimationFrame(gameLoop);
+    }
+
     function drawGame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -212,6 +250,10 @@
 
       ctx.fillStyle = player2.color;
       ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+      // Draw aiming reticles
+      drawAimingReticle(player1, true); // Red player (aims with mouse)
+      drawAimingReticle(player2, false); // Blue player (aims with Q key)
 
       // Draw health bars
       drawHealthBar(player1, "#3498db");
@@ -286,6 +328,59 @@
       ctx.fillRect(player.x, player.y - 20, healthFillWidth, 15);
     }
 
+    function drawAimingReticle(player, isRedPlayer) {
+      if (isRedPlayer) {
+        // Red player aims with the mouse
+        const distX = player.aiming.x - player.x;
+        const distY = player.aiming.y - player.y;
+        const angle = Math.atan2(distY, distX);
+        const distance = Math.min(player.range * 20, Math.hypot(distX, distY));
+
+        const reticleX = player.x + player.width / 2 + Math.cos(angle) * distance;
+        const reticleY = player.y + player.height / 2 + Math.sin(angle) * distance;
+
+        // Draw line as aiming reticle
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.width / 2, player.y + player.height / 2);
+        ctx.lineTo(reticleX, reticleY);
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Blue player aims with the Q key (rotates the reticle)
+        const angle = player.aimingAngle;
+        const distance = player.range * 20;
+
+        const reticleX = player.x + player.width / 2 + Math.cos(angle) * distance;
+        const reticleY = player.y + player.height / 2 + Math.sin(angle) * distance;
+
+        // Draw rotated line as aiming reticle
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.width / 2, player.y + player.height / 2);
+        ctx.lineTo(reticleX, reticleY);
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    function handleMovement() {
+      if (keys["ArrowUp"]) player1.y -= player1.speed;
+      if (keys["ArrowDown"]) player1.y += player1.speed;
+      if (keys["ArrowLeft"]) player1.x -= player1.speed;
+      if (keys["ArrowRight"]) player1.x += player1.speed;
+
+      if (keys["w"]) player2.y -= player2.speed;
+      if (keys["s"]) player2.y += player2.speed;
+      if (keys["a"]) player2.x -= player2.speed;
+      if (keys["d"]) player2.x += player2.speed;
+
+      // Blue player's aiming with Q key (rotation)
+      if (keys["q"]) {
+        player2.aimingAngle += Math.PI / 24; // Rotate 15 degrees when Q is pressed
+      }
+    }
+
     function checkCollision(bullet, player) {
       return bullet.x < player.x + player.width &&
              bullet.x + bullet.width > player.x &&
@@ -293,73 +388,46 @@
              bullet.y + bullet.height > player.y;
     }
 
-    function handleMovement() {
-      if (keys["w"] && player1.y > 0) player1.y -= player1.speed;
-      if (keys["s"] && player1.y < canvas.height - player1.height) player1.y += player1.speed;
-      if (keys["a"] && player1.x > 0) player1.x -= player1.speed;
-      if (keys["d"] && player1.x < canvas.width - player1.width) player1.x += player1.speed;
-
-      if (keys["ArrowUp"] && player2.y > 0) player2.y -= player2.speed;
-      if (keys["ArrowDown"] && player2.y < canvas.height - player2.height) player2.y += player2.speed;
-      if (keys["ArrowLeft"] && player2.x > 0) player2.x -= player2.speed;
-      if (keys["ArrowRight"] && player2.x < canvas.width - player2.width) player2.x += player2.speed;
-
-      if (keys[" "] && bullets.length < 1) {
-        shootBullet(player1.x + player1.width / 2, player1.y + player1.height / 2, player1.range, 0, player1.color, 1);
-      }
-
-      if (keys["Enter"] && bullets.length < 1) {
-        shootBullet(player2.x + player2.width / 2, player2.y + player2.height / 2, -player2.range, 0, player2.color, 2);
-      }
-    }
-
-    function shootBullet(x, y, speedX, speedY, color, owner) {
-      bullets.push({
-        x: x,
-        y: y,
-        width: 10,
-        height: 5,
-        speedX: speedX,
-        speedY: speedY,
-        color: color,
-        life: 0,
-        owner: owner // Indicate which player owns the bullet
-      });
-    }
-
     function createExplosion(x, y, color) {
-      explosionEffects.push({
-        x: x,
-        y: y,
-        radius: 5,
-        color: color,
-        alpha: 1,
-        speed: 1
-      });
+      explosionEffects.push({ x, y, radius: 5, speed: 1, color, alpha: 1 });
     }
 
     function resetGame() {
+      player1.health = 100;
+      player2.health = 100;
+      player1.score = 0;
+      player2.score = 0;
       player1.x = 50;
       player1.y = 200;
       player2.x = 520;
       player2.y = 200;
-      bullets = [];
+      health1El.textContent = player1.health;
+      health2El.textContent = player2.health;
+      gameStarted = false;
+      startButton.style.display = "inline-block";
     }
 
-    function gameLoop() {
-      if (!gameStarted) return;
-      handleMovement();
-      drawGame();
-      requestAnimationFrame(gameLoop);
+    function shoot(player) {
+      const distX = player.aiming.x - player.x;
+      const distY = player.aiming.y - player.y;
+      const angle = Math.atan2(distY, distX);
+      const bulletSpeed = 7;
+
+      // Create bullet
+      const bullet = {
+        x: player.x + player.width / 2,
+        y: player.y + player.height / 2,
+        width: 10,
+        height: 5,
+        color: player === player1 ? "#3498db" : "#e74c3c",
+        speedX: Math.cos(angle) * bulletSpeed,
+        speedY: Math.sin(angle) * bulletSpeed,
+        life: 0,
+        owner: player === player1 ? 1 : 2
+      };
+
+      bullets.push(bullet);
     }
-
-    window.addEventListener("keydown", (e) => {
-      keys[e.key] = true;
-    });
-
-    window.addEventListener("keyup", (e) => {
-      keys[e.key] = false;
-    });
   </script>
 </body>
 </html>
